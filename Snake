@@ -1,0 +1,260 @@
+#include <stdio.h>//基本库
+#include <easyx.h>//easyx图形库
+#include <conio.h>//实时键盘输入
+#include <windows.h>//链接windows
+#include <time.h>//随机数种子
+#include <graphics.h>//图形编程
+#include <mmsystem.h>//媒体文件
+#include <tchar.h>//整数转字符串
+#pragma comment (lib,"winmm.lib")
+//top--------------////////////////////////////////////////////////////////
+typedef struct {
+	int x;
+	int y;
+} node;//声明结构
+void paintgrid();//暂时不用，画方格线
+void paintsnake(node* snake, int snakelen);//画蛇
+node snakemove(node* snake, int snakelen, int direction);//蛇的移动
+void paintfood(node food);//画食物
+node createfood(node* snake, int snakelen);//生成食物
+void paintsquare();//画小方块
+//枚举
+enum direction {
+	eup,
+	edown,
+	eright,
+	eleft
+};
+int pixel = 20;//像素
+IMAGE img,imge;//声明图片
+//调用音乐
+int music() {
+	mciSendString("open ./music/SnakeBGM.mp3 alias BGM",NULL, 0,NULL);
+	mciSendString("play BGM repeat", NULL, 0, NULL);
+	return 0;
+}
+void init();//开始游戏
+void inite();//游戏结束
+int zizhuang(node* snake, int snakelen);//声明自撞
+//body-------------/////////////////////////////////////////////////////////
+//主函数
+int main() {
+	init();
+	_getch();
+	initgraph(800, 600);//(800*600)
+	setbkcolor(RGB(191, 239, 255));//设置背景色
+	cleardevice();//清除窗口色
+
+	node snake[100] = { {5,7}, {4,7}, {3,7}, {2,7}, {1,7} };
+	int snakelen = 5;//初始蛇长
+	int currentDirection = eright;//现在方向
+	int lastDirection = eright; // 上一次方向
+	srand(unsigned int(time(NULL)));
+	node food = createfood(snake, snakelen);//生成食物
+	int speed = 500; // 初始速度（毫秒）
+	int speedIncrease = 50; // 每次加速的幅度
+	BeginBatchDraw();
+	//start game开始播放BGM
+	music();//音乐开始
+	//键盘输入及其他游戏规则判定
+	while (1) {
+		// 检测键盘输入
+		if (_kbhit()) {
+			char key = _getch();
+			int newDirection = currentDirection;
+			switch (key) {
+			case 'w': case 'W': newDirection = eup; break;
+			case 's': case 'S': newDirection = edown; break;
+			case 'a': case 'A': newDirection = eleft; break;
+			case 'd': case 'D': newDirection = eright; break;
+			case '-': case '_': speed += speedIncrease; break;
+			case '+': case '=': speed -= speedIncrease; break;
+			case 27: // ESC键退出
+				EndBatchDraw(); // 退出前结束批量绘制
+				closegraph();
+				return 0;
+			}
+			if ((lastDirection == eup && newDirection == edown) ||
+				(lastDirection == edown && newDirection == eup) ||
+				(lastDirection == eleft && newDirection == eright) ||
+				(lastDirection == eright && newDirection == eleft)) {
+				// 反向，不更新currentDirection
+			}
+			else {
+				currentDirection = newDirection;
+			}
+		}
+		int count = (snakelen - 5) * 5;
+		lastDirection = currentDirection;
+		node lasttail = snakemove(snake, snakelen, currentDirection);
+		if (snake[0].x<0 || snake[0].x>(800 / pixel) || snake[0].y<0 || snake[0].y>(600 / pixel)) {
+			settextcolor(RED);
+			TCHAR scoreText[50];
+			_stprintf_s(scoreText, _T("本次得分：%d"), count);
+			outtextxy(280, 300, scoreText);
+			//outtextxy(280, 350, _T("按任意键退出"));
+			mciSendString("close BGM", NULL, 0, NULL);
+			FlushBatchDraw(); // 刷新显示得分
+			_getch();
+			inite();
+			_getch();
+			EndBatchDraw(); // 结束前结束批量绘制
+			closegraph();
+			return 0;
+		}
+		//自撞检测
+		if (zizhuang(snake, snakelen) == 1) {
+			settextcolor(RED);
+			TCHAR scoreText[50];
+			_stprintf_s(scoreText, _T("本次得分：%d"), count);
+			outtextxy(280, 300, scoreText);
+			//outtextxy(280, 350, _T("按任意键退出"));
+			mciSendString("close BGM", NULL, 0, NULL);
+			FlushBatchDraw(); // 刷新显示得分
+			_getch();
+			inite();
+			_getch();
+			EndBatchDraw(); // 结束前结束批量绘制
+			closegraph();
+			return 0;
+
+		}
+		//撞墙检测
+		if (snake[0].x == food.x && snake[0].y == food.y) {
+			snake[snakelen] = lasttail;
+			snakelen++;
+			if (speed > 100) {
+				speed -= speedIncrease;
+				if (speed <= 100) {
+					speed = 100;
+				}
+			}
+			food = createfood(snake, snakelen);
+		}
+		//打印
+		cleardevice();
+		//paintgrid();
+		paintsquare();
+		paintsnake(snake, snakelen);
+		//paintfood
+		paintfood(food);
+		// 刷新批量绘制到屏幕
+		FlushBatchDraw();
+		Sleep(speed);
+		}
+	//阻塞
+	getchar();//输入并结束
+	EndBatchDraw(); // 结束批量绘制
+	closegraph();
+	return 0;
+}
+//function---------/////////////////////////////////////////////////////////
+//void paintgrid()
+//{
+	//int x, y;
+	//横线
+	//for (x = 0; x <= 800; x += pixel) {
+		//line(x, 0, x, 600);
+	//}
+	//竖线
+	//for (y = 0; y <= 600; y += pixel) {
+		//line(0, y, 800, y);
+	//}
+//}
+void paintsnake(node* snake, int snakelen) {
+	for (int i = 0; i < snakelen; i++) {
+		//左上角
+		int left = snake[i].x * pixel;
+		int up = snake[i].y * pixel;
+		//右下角
+		int right = left + pixel;
+		int down = up + pixel;
+		setfillcolor(RGB(240, 230, 140));
+		solidrectangle(left, up, right, down);//绘制矩形
+	}
+}
+node snakemove(node* snake, int snakelen, int currentDirection) {
+	//记录蛇尾点
+	node tail = snake[snakelen - 1];
+	//蛇身
+	for (int i = snakelen - 1; i > 0; i--) {
+		snake[i] = snake[i - 1];
+	}
+	//蛇头
+	node newhead;
+	newhead = snake[0];
+	switch (currentDirection) {
+	case eup:newhead.y--;
+		break;
+	case edown:newhead.y++;
+		break;
+	case eright:newhead.x++;
+		break;
+	case eleft:newhead.x--;
+		break;
+	}
+	snake[0] = newhead;
+	//返回蛇尾点
+	return tail;
+}
+node createfood(node* snake, int snakelen) 
+{
+	while (1) {
+		node food;
+		food.x = rand() % (800/ pixel);
+		food.y = rand() % (600/ pixel);
+
+		int i;
+		for (i = 0; i < snakelen; i++) {
+			if (snake[i].x == food.x && snake[i].y == food.y) {
+				break;
+			}
+		}
+		if (i < snakelen)
+			continue;
+		else 
+		return  food;
+	}
+}
+void paintfood(node food) {
+	//左上角
+	int left = food.x * pixel;
+	int up = food.y * pixel;
+	//右下角
+	int right = left + pixel;
+	int down = up + pixel;
+	setfillcolor(RGB(255, 192, 203));
+	solidrectangle(left, up, right, down);//绘制矩形
+	setfillcolor(WHITE);
+}
+void init() {
+	loadimage(&img, "./pic/new.png");
+	initgraph(1168, 539);
+	putimage(0, 0, &img);
+}
+void inite() {
+	loadimage(&imge, "./pic/over.png");
+	initgraph(949, 446);
+	putimage(0, 0, &imge);
+}
+void paintsquare() {
+	int x, y;
+	for (x = 0; x < 800 / pixel; x++) {
+		for (y = 0; y < 600 / pixel; y++) {
+			int left = x * pixel + 2;
+			int top = y * pixel + 2;
+			int right = (x + 1) * pixel - 2;
+			int bottom = (y + 1) * pixel - 2;
+			setfillcolor(RGB(135, 206, 235));
+			solidrectangle(left, top, right, bottom);
+		}
+	}
+}
+int  zizhuang(node* snake, int snakelen) {
+	for (int i = 1; i < snakelen; i++) {
+		if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
+			return 1;
+		}
+	}
+	return 0;
+}
