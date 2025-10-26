@@ -29,7 +29,7 @@ int pixel = 20;//像素
 IMAGE img,imge;//声明图片
 //调用音乐
 int music() {
-	mciSendString("open ./music/SnakeBGM.mp3 alias BGM",NULL, 0,NULL);
+	mciSendString("open SnakeBGM.mp3 alias BGM",NULL, 0,NULL);
 	mciSendString("play BGM repeat", NULL, 0, NULL);
 	return 0;
 }
@@ -96,9 +96,10 @@ int main() {
 			mciSendString("close BGM", NULL, 0, NULL);
 			FlushBatchDraw(); // 刷新显示得分
 			_getch();
+			EndBatchDraw(); // 结束前结束批量绘制
 			inite();
 			_getch();
-			EndBatchDraw(); // 结束前结束批量绘制
+			
 			closegraph();
 			return 0;
 		}
@@ -112,9 +113,11 @@ int main() {
 			mciSendString("close BGM", NULL, 0, NULL);
 			FlushBatchDraw(); // 刷新显示得分
 			_getch();
-			inite();
-			_getch();
 			EndBatchDraw(); // 结束前结束批量绘制
+			inite();
+			
+			_getch();
+			
 			closegraph();
 			return 0;
 
@@ -143,7 +146,7 @@ int main() {
 		Sleep(speed);
 		}
 	//阻塞
-	getchar();//输入并结束
+	//getchar();//输入并结束
 	EndBatchDraw(); // 结束批量绘制
 	closegraph();
 	return 0;
@@ -228,12 +231,12 @@ void paintfood(node food) {
 	setfillcolor(WHITE);
 }
 void init() {
-	loadimage(&img, "./pic/new.png");
+	loadimage(&img, "new.png");
 	initgraph(1168, 539);
 	putimage(0, 0, &img);
 }
 void inite() {
-	loadimage(&imge, "./pic/over.png");
+	loadimage(&imge, "over.png");
 	initgraph(949, 446);
 	putimage(0, 0, &imge);
 }
